@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# API Keys and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*credentials*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Project specific
+collaboration_*.json
+demo_results.json
+*.json.bak
+
+# Node modules (for Claude Code CLI)
+node_modules/
+
+# Test outputs
+test_output/
