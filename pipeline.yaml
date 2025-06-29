@@ -1,0 +1,155 @@
+# Pipeline Configuration Example
+# Gemini = BRAIN: All decision-making, orchestration, determining what to do
+# Claude = MUSCLE: Pure execution of coding/file tasks, no decisions
+
+workflow:
+  name: "intelligent_code_pipeline"
+  checkpoint_enabled: true
+  
+  defaults:
+    gemini_model: "gemini-2.5-flash"  # Brain for all decisions
+    gemini_token_budget:  # Default token settings for all Gemini steps
+      max_output_tokens: 2048
+      temperature: 0.7
+      top_p: 0.95
+      top_k: 40
+    claude_output_format: "stream-json"
+    output_dir: "./outputs"  # Where to save file outputs
+    
+  steps:
+    # Step 1: Gemini Brain analyzes and decides what needs to be built
+    - name: "analyze_and_plan"
+      type: "gemini"
+      role: "brain"
+      model: "gemini-2.5-flash"
+      prompt:
+        - type: "static"
+          content: "Analyze these requirements and create a detailed implementation plan:"
+        - type: "file"
+          path: "requirements.txt"
+      functions:
+        - name: "create_implementation_plan"
+          description: "Creates detailed plan with specific files and code to write"
+        - name: "identify_tasks"
+          description: "Breaks down into specific coding tasks for Claude"
+      output_to_file: "outputs/implementation_plan.json"
+          
+    # Step 2: Gemini decides specific coding tasks, Claude executes them
+    - name: "decide_coding_tasks"
+      type: "gemini"
+      role: "brain"
+      model: "gemini-2.5-flash"
+      prompt:
+        - type: "static"
+          content: "Based on the plan, create specific coding instructions for Claude:"
+        - type: "previous_response"
+          step: "analyze_and_plan"
+      functions:
+        - name: "generate_coding_instructions"
+          description: "Creates precise, executable instructions for Claude"
+      
+    # Step 3: Claude executes the coding tasks (no decisions, just implementation)
+    - name: "execute_coding"
+      type: "parallel_claude"
+      role: "muscle"
+      parallel_tasks:
+        - id: "task_1"
+          claude_options:
+            print: true
+            max_turns: 10
+            allowed_tools: ["Bash", "Read", "Write", "Edit", "MultiEdit"]
+          prompt:
+            - type: "static"
+              content: "Execute this exact coding task:"
+            - type: "previous_response"
+              step: "decide_coding_tasks"
+              extract: "task_1_instructions"
+          output_to_file: "outputs/task_1_result.json"
+              
+        - id: "task_2"
+          claude_options:
+            print: true
+            max_turns: 10
+            allowed_tools: ["Bash", "Read", "Write", "Edit", "MultiEdit"]
+          prompt:
+            - type: "static"
+              content: "Execute this exact coding task:"
+            - type: "previous_response"
+              step: "decide_coding_tasks"
+              extract: "task_2_instructions"
+          output_to_file: "outputs/task_2_result.json"
+              
+    # Step 4: Gemini Brain reviews results and decides next steps
+    - name: "review_and_decide"
+      type: "gemini"
+      role: "brain"
+      model: "gemini-2.5-pro"
+      token_budget:
+        max_output_tokens: 8192  # Need more tokens for comprehensive code review
+        temperature: 0.3  # Lower temperature for more analytical review
+      prompt:
+        - type: "static"
+          content: "Review the executed code and decide what needs to be done next:"
+        - type: "previous_response"
+          step: "execute_coding"
+      functions:
+        - name: "analyze_code_quality"
+          description: "Evaluates if code meets requirements"
+        - name: "determine_next_steps"
+          description: "Decides on fixes, tests, or completion"
+      output_to_file: "outputs/review_decision.json"
+          
+    # Step 5: If needed, Gemini creates fix instructions, Claude executes
+    - name: "create_fix_instructions"
+      type: "gemini"
+      role: "brain"
+      condition: "review_and_decide.needs_fixes"
+      prompt:
+        - type: "static"
+          content: "Create specific instructions to fix the identified issues:"
+        - type: "previous_response"
+          step: "review_and_decide"
+          
+    - name: "execute_fixes"
+      type: "claude"
+      role: "muscle"
+      condition: "review_and_decide.needs_fixes"
+      claude_options:
+        print: true
+        max_turns: 20
+        allowed_tools: ["Bash", "Read", "Write", "Edit", "MultiEdit", "Grep", "LS"]
+      prompt:
+        - type: "static"
+          content: "Execute these exact fixes:"
+        - type: "previous_response"
+          step: "create_fix_instructions"
+      output_to_file: "outputs/fixes_applied.json"
+          
+  # Optional: Gemini function definitions for decision-making
+  gemini_functions:
+    determine_architecture:
+      parameters:
+        type: "object"
+        properties:
+          tech_stack:
+            type: "array"
+            description: "Technologies to use"
+          patterns:
+            type: "array"
+            description: "Design patterns to apply"
+            
+    identify_components:
+      parameters:
+        type: "object"
+        properties:
+          components:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                name:
+                  type: "string"
+                description:
+                  type: "string"
+                dependencies:
+                  type: "array"

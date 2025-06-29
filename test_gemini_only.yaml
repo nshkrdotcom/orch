@@ -1,0 +1,58 @@
+# Test workflow using only Gemini (no Claude required)
+workflow:
+  name: "gemini_only_test"
+  checkpoint_enabled: true
+  
+  defaults:
+    gemini_model: "gemini-2.5-flash"
+    output_dir: "./outputs/test"
+    
+  steps:
+    # Step 1: Simple text generation
+    - name: "generate_story"
+      type: "gemini"
+      role: "brain"
+      prompt:
+        - type: "static"
+          content: "Write a very short story (2-3 sentences) about a robot learning to code."
+      output_to_file: "story.json"
+      
+    # Step 2: Analyze the story
+    - name: "analyze_story"
+      type: "gemini"
+      role: "brain"
+      prompt:
+        - type: "static"
+          content: "Analyze this story and identify the main theme:"
+        - type: "previous_response"
+          step: "generate_story"
+      output_to_file: "analysis.json"
+      
+    # Step 3: Use function calling
+    - name: "extract_details"
+      type: "gemini"
+      role: "brain"
+      prompt:
+        - type: "static"
+          content: "Extract key details from the story"
+        - type: "previous_response"
+          step: "generate_story"
+      functions:
+        - name: "extract_story_elements"
+      output_to_file: "details.json"
+      
+  gemini_functions:
+    extract_story_elements:
+      description: "Extract key elements from a story"
+      parameters:
+        type: "object"
+        properties:
+          characters:
+            type: "array"
+            description: "List of characters in the story"
+          setting:
+            type: "string"
+            description: "Where the story takes place"
+          plot:
+            type: "string"
+            description: "Main plot of the story"

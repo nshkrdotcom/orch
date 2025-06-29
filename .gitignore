@@ -71,3 +71,10 @@ node_modules/
 
 # Test outputs
 test_output/
+
+# Workspace directory for Claude Code
+workspace/
+
+# Pipeline outputs
+outputs/
+checkpoints/

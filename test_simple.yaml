@@ -1,0 +1,52 @@
+# Simple test workflow to verify basic functionality
+
+workflow:
+  name: "simple_test"
+  checkpoint_enabled: false
+  
+  defaults:
+    gemini_model: "gemini-2.5-flash-lite-preview-06-17"
+    gemini_token_budget:
+      max_output_tokens: 500  # Very limited for testing
+      temperature: 0.5
+    claude_output_format: "json"
+    output_dir: "./outputs/test"
+    
+  steps:
+    # Step 1: Gemini generates a simple task
+    - name: "generate_task"
+      type: "gemini"
+      prompt:
+        - type: "static"
+          content: |
+            Generate a simple Python function that adds two numbers.
+            Just provide the function code, nothing else.
+      output_to_file: "task.json"
+      
+    # Step 2: Claude executes the task
+    - name: "execute_task"
+      type: "claude"
+      claude_options:
+        print: true
+        max_turns: 2
+        allowed_tools: ["Write"]
+      prompt:
+        - type: "static"
+          content: |
+            Create a file called simple_add.py with this function:
+        - type: "previous_response"
+          step: "generate_task"
+          extract: "text"
+      output_to_file: "execution.json"
+      
+    # Step 3: Gemini reviews
+    - name: "review"
+      type: "gemini"
+      prompt:
+        - type: "static"
+          content: |
+            Was the task completed successfully? Answer YES or NO.
+            Execution result:
+        - type: "previous_response"
+          step: "execute_task"
+      output_to_file: "review.json"

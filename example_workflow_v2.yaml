@@ -1,0 +1,74 @@
+# Example: Create a Python Calculator (Version 2)
+# Improved workflow with better integration between steps
+
+workflow:
+  name: "calculator_builder_v2"
+  checkpoint_enabled: true
+  
+  defaults:
+    gemini_model: "gemini-2.5-flash-lite-preview-06-17"
+    gemini_token_budget:
+      max_output_tokens: 4096  # Good default for most tasks
+      temperature: 0.7
+      top_p: 0.95
+    claude_output_format: "json"
+    output_dir: "./outputs/calculator_v2"
+    
+  steps:
+    # Step 1: Gemini creates a concise plan
+    - name: "create_plan"
+      type: "gemini"
+      role: "brain"
+      token_budget:
+        max_output_tokens: 2048  # Keep plan concise
+        temperature: 0.5
+      prompt:
+        - type: "static"
+          content: |
+            Create a concise implementation plan for a Python calculator with:
+            - Basic operations: add, subtract, multiply, divide
+            - Error handling for division by zero
+            - Simple command-line interface
+            
+            Keep the plan SHORT and ACTIONABLE. List only:
+            1. File names to create
+            2. Key classes/functions per file
+            3. No more than 3-4 files total
+      output_to_file: "plan.json"
+      
+    # Step 2: Claude implements based on plan
+    - name: "implement_calculator"
+      type: "claude"
+      role: "muscle"
+      claude_options:
+        print: true
+        max_turns: 15  # More turns for implementation
+        allowed_tools: ["Write", "Edit", "Read", "Bash"]
+        output_format: "json"
+      prompt:
+        - type: "static"
+          content: |
+            Implement a simple Python calculator based on this plan.
+            Create the necessary files with clean, working code.
+            Include a main.py that can be run directly.
+            After creating all files, run: find . -name "*.py" | grep -E "(calculator|main)" | head -10
+            to list the files you created.
+        - type: "previous_response"
+          step: "create_plan"
+      output_to_file: "implementation_result.json"
+      
+    # Step 3: Gemini tests the implementation
+    - name: "test_calculator"
+      type: "gemini"
+      role: "brain"
+      token_budget:
+        max_output_tokens: 2048
+      prompt:
+        - type: "static"
+          content: |
+            Based on the implementation result, create a test plan.
+            List 5 specific test cases to verify the calculator works correctly.
+            Include edge cases like division by zero.
+        - type: "previous_response"
+          step: "implement_calculator"
+      output_to_file: "test_plan.json"

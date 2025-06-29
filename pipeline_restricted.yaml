@@ -1,0 +1,82 @@
+# Pipeline with Claude restricted to a specific workspace directory
+
+workflow:
+  name: "calculator_builder_restricted"
+  checkpoint_enabled: true
+  
+  # Define the restricted workspace directory
+  workspace_dir: "./workspace"
+  
+  defaults:
+    gemini_model: "gemini-2.5-flash-lite-preview-06-17"
+    gemini_token_budget:
+      max_output_tokens: 2048
+      temperature: 0.7
+      top_p: 0.95
+    claude_output_format: "json"
+    output_dir: "./outputs/calculator_restricted"
+    
+  steps:
+    # Step 1: Setup workspace
+    - name: "setup_workspace"
+      type: "gemini"
+      role: "brain"
+      token_budget:
+        max_output_tokens: 500
+      prompt:
+        - type: "static"
+          content: |
+            Create a simple plan for a Python calculator that will be built in the ./workspace directory.
+            List only the files needed:
+            - calculator.py (main calculator logic)
+            - test_calculator.py (tests)
+            
+            Keep it simple - just basic operations.
+      output_to_file: "plan.json"
+      
+    # Step 2: Claude implements in restricted directory
+    - name: "implement_calculator"
+      type: "claude"
+      role: "muscle"
+      claude_options:
+        print: true
+        max_turns: 10
+        allowed_tools: ["Write", "Edit", "Read", "Bash", "LS"]
+        output_format: "json"
+        # Set working directory to workspace
+        cwd: "./workspace"
+        # Add system prompt to enforce directory restriction
+        append_system_prompt: |
+          CRITICAL: You MUST only create and modify files within the current working directory (./workspace).
+          Do NOT access or modify any files outside of this directory.
+          All file operations must use relative paths starting from the current directory.
+      prompt:
+        - type: "static"
+          content: |
+            You are in the ./workspace directory. Create a simple Python calculator here.
+            
+            1. Create calculator.py with basic operations (add, subtract, multiply, divide)
+            2. Create test_calculator.py with basic tests
+            3. List the files you created with: ls -la
+            
+            Remember: Only work within the current directory. Do not use absolute paths or navigate outside.
+        - type: "previous_response"
+          step: "setup_workspace"
+      output_to_file: "implementation.json"
+      
+    # Step 3: Verify files were created in correct location
+    - name: "verify_workspace"
+      type: "gemini"
+      role: "brain"
+      prompt:
+        - type: "static"
+          content: |
+            Based on the implementation result, verify that:
+            1. Files were created only in the workspace directory
+            2. No files were created outside the workspace
+            3. The implementation is complete
+            
+            Respond with: SUCCESS if correct, FAILED if files were created outside workspace
+        - type: "previous_response"
+          step: "implement_calculator"
+      output_to_file: "verification.json"

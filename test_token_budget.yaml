@@ -1,0 +1,86 @@
+# Test configuration demonstrating token budget feature for Gemini models
+
+workflow:
+  name: "token_budget_demo"
+  checkpoint_enabled: false
+  
+  defaults:
+    gemini_model: "gemini-2.5-flash"
+    # Default token budget for all Gemini steps
+    gemini_token_budget:
+      max_output_tokens: 1024  # Conservative default
+      temperature: 0.7
+      top_p: 0.9
+    claude_output_format: "json"
+    output_dir: "./outputs/token_budget_test"
+    
+  steps:
+    # Step 1: Short response with default token budget
+    - name: "short_analysis"
+      type: "gemini"
+      role: "brain"
+      prompt:
+        - type: "static"
+          content: |
+            Briefly describe what a Python decorator is in 2-3 sentences.
+            Keep your response concise.
+      output_to_file: "short_response.json"
+      
+    # Step 2: Detailed explanation with increased token budget
+    - name: "detailed_explanation"
+      type: "gemini"
+      role: "brain"
+      token_budget:
+        max_output_tokens: 4096  # Override for more detailed response
+        temperature: 0.5  # Lower temperature for more focused content
+      prompt:
+        - type: "static"
+          content: |
+            Provide a comprehensive explanation of Python decorators including:
+            1. What they are and how they work
+            2. Common use cases with examples
+            3. Advanced patterns and best practices
+            4. Performance considerations
+            
+            Be thorough and include code examples.
+      output_to_file: "detailed_response.json"
+      
+    # Step 3: Creative task with high temperature
+    - name: "creative_task"
+      type: "gemini"
+      role: "brain"
+      model: "gemini-2.5-pro"  # Using pro model for creativity
+      token_budget:
+        max_output_tokens: 2048
+        temperature: 0.9  # High temperature for creativity
+        top_p: 0.95
+        top_k: 50  # Allow more diverse token selection
+      prompt:
+        - type: "static"
+          content: |
+            Create an innovative and creative analogy that explains Python decorators
+            to someone who has never programmed before. Use everyday objects or 
+            situations that anyone can relate to. Be imaginative!
+      output_to_file: "creative_response.json"
+      
+    # Step 4: Precise technical specification with low temperature
+    - name: "technical_spec"
+      type: "gemini"
+      role: "brain"
+      token_budget:
+        max_output_tokens: 3072
+        temperature: 0.1  # Very low temperature for precision
+        top_p: 0.8
+      prompt:
+        - type: "static"
+          content: |
+            Write a precise technical specification for implementing a caching decorator
+            in Python. Include:
+            - Exact function signatures
+            - Parameter types and return types
+            - Edge cases to handle
+            - Memory management considerations
+            - Thread safety requirements
+            
+            Be extremely precise and unambiguous.
+      output_to_file: "technical_spec.json"
