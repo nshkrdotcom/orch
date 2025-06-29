@@ -8,6 +8,7 @@ import json
 import sys
 from pathlib import Path
 import argparse
+from datetime import datetime
 
 def find_latest_debug_log(output_dir):
     """Find the most recent debug log file"""
@@ -33,6 +34,27 @@ def find_output_files(output_dir):
     output_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return output_files
 
+def find_workspace_files(workspace_dir="workspace"):
+    """Find all files created in the workspace directory"""
+    workspace_path = Path(workspace_dir)
+    if not workspace_path.exists():
+        return []
+    
+    files = []
+    for f in workspace_path.rglob("*"):
+        if f.is_file():
+            stat = f.stat()
+            files.append({
+                'path': f,
+                'size': stat.st_size,
+                'mtime': stat.st_mtime,
+                'relative_path': f.relative_to(workspace_path)
+            })
+    
+    # Sort by modification time
+    files.sort(key=lambda x: x['mtime'], reverse=True)
+    return files
+
 def print_separator(title):
     """Print a formatted separator"""
     print(f"\n{'='*80}")
@@ -45,6 +67,7 @@ def main():
     parser.add_argument("-n", "--no-content", action="store_true", help="Only show file paths, not content")
     parser.add_argument("-l", "--log-only", action="store_true", help="Only show debug log")
     parser.add_argument("-f", "--files-only", action="store_true", help="Only show output files")
+    parser.add_argument("-w", "--workspace", action="store_true", help="Show workspace files created by Claude")
     
     args = parser.parse_args()
     
@@ -91,6 +114,22 @@ def main():
                             print(f"Error reading {f}: {e}")
                     else:
                         print(f"Path: {f}")
+    
+    # Show workspace files if requested
+    if args.workspace:
+        workspace_files = find_workspace_files()
+        if workspace_files:
+            print_separator("Workspace Files Created by Claude")
+            print(f"Total files: {len(workspace_files)}\n")
+            
+            for file_info in workspace_files:
+                mtime_str = datetime.fromtimestamp(file_info['mtime']).strftime('%Y-%m-%d %H:%M:%S')
+                size_str = f"{file_info['size']:,} bytes"
+                print(f"📄 {file_info['relative_path']}")
+                print(f"   Size: {size_str}")
+                print(f"   Modified: {mtime_str}")
+                print(f"   Full path: {file_info['path'].absolute()}")
+                print()
 
 if __name__ == "__main__":
     main()
